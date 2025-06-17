@@ -6,7 +6,7 @@
 
 The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding assistant in a fully containerized, reproducible environment with pre-configured development profiles and MCP servers.
 
-```
+```bash
  ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗
 ██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝
 ██║     ██║     ███████║██║   ██║██║  ██║█████╗
@@ -31,6 +31,7 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 - **Better Profile Management**: Profile commands now exit cleanly after setup instead of launching Claude
 - **Enhanced Flag Separation**: Better handling of ClaudeBox vs Claude Code specific flags
 - **Shell Mode Improvements**: Fixed shell mode functionality with proper environment setup
+- **Git Authentication**: SSH key mounting for Git operations (works best with SSH host aliases)
 - **Development-Friendly Defaults**: Sudo enabled and firewall disabled by default for productivity
 
 ## ✨ Features
@@ -39,6 +40,7 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 - **Five MCP Servers**: Pre-configured Sequential Thinking, Memory, Context7, Task Master AI, and Playwright servers
 - **Development Profiles**: Pre-configured language stacks (C/C++, Python, Rust, Go, etc.) with proper tool integration
 - **Multi-Project Support**: Each repository gets its own isolated container configuration and profiles
+- **Git Integration**: Automatic SSH key mounting for Git authentication (works with SSH host aliases)
 - **Persistent Configuration**: Settings and data persist between sessions
 - **Package Management**: Easy installation of additional development tools
 - **Auto-Setup**: Handles Docker installation and configuration automatically
@@ -63,6 +65,7 @@ chmod +x claudebox
 ```
 
 The script will:
+
 - ✅ Check for Docker (install if needed)
 - ✅ Configure Docker for non-root usage
 - ✅ Build the ClaudeBox image with MCP servers
@@ -102,9 +105,10 @@ claudebox profile rust go         # Rust + Go
 claudebox
 ```
 
-#### Available Profiles:
+#### Available Profiles
 
 **Fully Implemented:**
+
 - **c** - C/C++ Development (gcc, g++, gdb, valgrind, cmake, cmocka, lcov, ncurses)
 - **openwrt** - OpenWRT Development (cross-compilation, QEMU, build essentials)
 - **rust** - Rust Development (cargo, rustc, clippy, rust-analyzer)
@@ -113,6 +117,7 @@ claudebox
 - **javascript** - Node.js/TypeScript development tools
 
 **Coming Soon (not yet in cached build):**
+
 - **java** - Java Development (OpenJDK 17, Maven, Gradle, Ant)
 - **ruby** - Ruby Development (Ruby, gems, bundler)
 - **php** - PHP Development (PHP, Composer, common extensions)
@@ -158,6 +163,7 @@ claudebox  # Runs with cross-compilation tools
 ```
 
 Each project directory maintains its own:
+
 - Container configuration and profiles
 - Development tool installations
 - Firewall allowlists (`~/.claudebox/<project>/firewall/allowlist`)
@@ -176,9 +182,33 @@ claudebox shell
 claudebox update
 ```
 
+### Git Authentication
+
+ClaudeBox automatically mounts your SSH keys for Git authentication:
+
+#### SSH Keys with Host Aliases (Recommended)
+
+```bash
+# Ensure your ~/.ssh/config has host aliases like:
+# Host github.com-mykey
+#   HostName github.com
+#   User git
+#   IdentityFile ~/.ssh/my_key
+
+# Clone/set remote using the host alias
+git clone github.com-mykey:username/repo.git
+# or
+git remote set-url origin github.com-mykey:username/repo.git
+
+claudebox shell
+ssh -T github.com-mykey  # Should show GitHub greeting
+git push origin main  # Works with SSH key authentication
+```
+
 ### Security Options
 
 **Current Defaults (Development-Friendly):**
+
 - Sudo access: **ENABLED** by default
 - Network firewall: **DISABLED** by default  
 - Permission checks: **SKIPPED** by default
@@ -206,6 +236,7 @@ claudebox rebuild
 ## 🔧 Configuration
 
 ClaudeBox stores data in:
+
 - `~/.claude/` - Claude configuration and data
 - `~/.claudebox/` - ClaudeBox-specific data (MCP memory, etc.)
 - Current directory mounted as `/workspace` in container
@@ -222,6 +253,7 @@ ClaudeBox automatically sets up `.mcp.json` in your workspace with all five MCP 
 ## 🏗️ Architecture
 
 ClaudeBox creates a Debian-based Docker image with:
+
 - Node.js (via NVM for version flexibility)
 - Claude Code CLI (@anthropic-ai/claude-code)
 - Five MCP servers (Sequential Thinking, Memory, Context7, Task Master AI, Playwright)
@@ -241,19 +273,24 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🐛 Troubleshooting
 
 ### Docker Permission Issues
+
 ClaudeBox automatically handles Docker setup, but if you encounter issues:
+
 1. The script will add you to the docker group
 2. You may need to log out/in or run `newgrp docker`
 3. Run `claudebox` again
 
 ### MCP Servers Not Working
+
 Test MCP servers after installation:
+
 ```bash
 claudebox shell
 ~/test-mcp.sh
 ```
 
 ### Profile Installation Failed
+
 ```bash
 claudebox clean --all
 claudebox rebuild
@@ -261,7 +298,9 @@ claudebox profile <name>
 ```
 
 ### Can't Find Command
+
 ClaudeBox creates a symlink in your user's local bin directory:
+
 ```bash
 # Check if symlink exists
 ls -la ~/.local/bin/claudebox
@@ -271,7 +310,9 @@ ls -la ~/.local/bin/claudebox
 ```
 
 ### Python Tools Not Found (uv, python3)
+
 If development tools aren't available after installing the Python profile:
+
 ```bash
 # Rebuild with fresh profile
 claudebox clean --all
@@ -281,7 +322,9 @@ which python3 uv  # Should now work
 ```
 
 ### macOS Compatibility Issues
+
 ClaudeBox now fully supports macOS. If you encounter issues:
+
 ```bash
 # Ensure script is executable
 chmod +x claudebox
@@ -289,6 +332,31 @@ chmod +x claudebox
 # Clean and rebuild if needed
 ./claudebox clean --all
 ./claudebox profile <your-profiles>
+```
+
+### Git Authentication Issues
+
+If Git push/pull operations fail:
+
+```bash
+# Check SSH key permissions on host
+ls -la ~/.ssh/
+chmod 600 ~/.ssh/id_* ~/.ssh/*_rsa ~/.ssh/*_ed25519  # Fix key permissions
+chmod 644 ~/.ssh/*.pub  # Fix public key permissions
+
+# Test SSH connection using host alias
+claudebox shell
+ssh -T github.com-youralias  # Should show GitHub greeting
+
+# If using direct github.com, ensure key is specified
+ssh -T -i ~/.ssh/your_key git@github.com
+
+# Set up proper remote URL with host alias
+git remote set-url origin github.com-youralias:username/repo.git
+
+# Alternative: Use GitHub CLI
+claudebox shell
+gh auth login --web
 ```
 
 ## 🎉 Acknowledgments
