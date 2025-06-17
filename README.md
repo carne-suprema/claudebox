@@ -204,7 +204,7 @@ ssh -T github.com-mykey  # Should show GitHub greeting
 git push origin main  # Works with SSH key authentication and your Git config
 ```
 
-**Git Configuration**: ClaudeBox mounts your `~/.gitconfig` and any conditional config files (like `~/.gitconfig-*`) so your user name, email, and other Git settings work correctly inside the container.
+**Git Configuration**: ClaudeBox automatically detects and configures your Git user name and email from the host system, ensuring commits have the correct author information regardless of repository.
 
 ### Security Options
 

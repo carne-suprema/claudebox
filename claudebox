@@ -1048,6 +1048,14 @@ if [ "\$ENABLE_SUDO" = "true" ]; then
     chmod 0440 /etc/sudoers.d/DOCKERUSER
 fi
 
+# Configure Git user settings if provided
+if [ -n "\$GIT_USER_NAME" ]; then
+    su - DOCKERUSER -c "git config --global user.name '\$GIT_USER_NAME'"
+fi
+if [ -n "\$GIT_USER_EMAIL" ]; then
+    su - DOCKERUSER -c "git config --global user.email '\$GIT_USER_EMAIL'"
+fi
+
 if [ -n "\$CLAUDEBOX_PROJECT_DIR" ]; then
     PROFILE_FILE="/home/DOCKERUSER/.claudebox/profiles/\$(echo "\$CLAUDEBOX_PROJECT_DIR" | sed 's|/|-|g' | sed 's|^-||').ini"
 
@@ -1143,6 +1151,21 @@ DOCKERFILE
 
    # Create new container with --rm
    info "Starting claudebox for $PROJECT_DIR..."
+   
+   # Show Git configuration status
+   local git_user_name git_user_email
+   git_user_name=$(git config --get user.name 2>/dev/null || echo '')
+   git_user_email=$(git config --get user.email 2>/dev/null || echo '')
+   
+   if [[ -n "$git_user_name" && -n "$git_user_email" ]]; then
+       info "Git configuration: $git_user_name <$git_user_email>"
+   elif [[ -n "$git_user_name" ]]; then
+       info "Git configuration: $git_user_name (no email configured)"
+   elif [[ -n "$git_user_email" ]]; then
+       info "Git configuration: $git_user_email (no name configured)"
+   else
+       warn "No Git user configuration found - commits will use Claude Code defaults"
+   fi
 
    # Check if we have a TTY
    local tty_flag=""
@@ -1179,13 +1202,13 @@ DOCKERFILE
        -v "$HOME/.claude":/home/$DOCKER_USER/.claude \
        -v "$HOME/.npmrc":/home/$DOCKER_USER/.npmrc:ro \
        -v "$HOME/.ssh":/home/$DOCKER_USER/.ssh:ro \
-       -v "$HOME/.gitconfig":/home/$DOCKER_USER/.gitconfig:ro \
-       $(for gitconfig in "$HOME"/.gitconfig-*; do [[ -f "$gitconfig" ]] && echo "-v $gitconfig:/home/$DOCKER_USER/$(basename "$gitconfig"):ro"; done | tr '\n' ' ') \
        -e "NODE_ENV=${NODE_ENV:-production}" \
        -e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" \
        -e "NODE_OPTIONS=--max-old-space-size=4096" \
        -e "POWERLEVEL9K_DISABLE_GITSTATUS=true" \
        -e "CLAUDEBOX_PROJECT_DIR=$PROJECT_DIR" \
+       -e "GIT_USER_NAME=$(git config --get user.name 2>/dev/null || echo '')" \
+       -e "GIT_USER_EMAIL=$(git config --get user.email 2>/dev/null || echo '')" \
        "${extra_mounts[@]}" \
        "$IMAGE_NAME" \
        ${CLAUDEBOX_ENABLE_SUDO:+--dangerously-enable-sudo} \
