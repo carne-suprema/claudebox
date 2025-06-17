@@ -850,7 +850,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     apt install gh -y -qq && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN DELTA_VERSION=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest | grep -Po '"tag_name": "\K[^"]*') && \
+RUN DELTA_VERSION=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | head -1) && \
+    if [ -z "$DELTA_VERSION" ]; then DELTA_VERSION="0.17.0"; fi && \
     ARCH=$(dpkg --print-architecture) && \
     wget -q https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/git-delta_${DELTA_VERSION}_${ARCH}.deb && \
     dpkg -i git-delta_${DELTA_VERSION}_${ARCH}.deb && \
