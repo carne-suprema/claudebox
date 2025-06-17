@@ -24,23 +24,26 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 
 ## 🚀 What's New in Latest Update
 
-- **MCP Server Integration**: Built-in Sequential Thinking and Memory servers for enhanced Claude capabilities
-- **Automatic Docker Setup**: Complete Docker installation and configuration for Ubuntu, Debian, Fedora, Arch
-- **Enhanced Security**: Network firewall restricting to Anthropic APIs (can be disabled)
-- **15+ Development Profiles**: From embedded systems to machine learning
-- **Visual Progress Indicators**: See exactly what's happening during installation
-- **Smart `.mcp.json` Management**: Automatic backup and restore of existing configurations
+- **Five MCP Servers**: Sequential Thinking, Memory, Context7, Task Master AI, and Playwright servers included
+- **macOS Compatibility**: Full support for macOS with proper command compatibility
+- **Python Profile Fixed**: Python development now includes proper Python3, pip, venv, and uv package manager
+- **Improved PATH Handling**: Development tools (like uv, python3) now properly accessible in all modes
+- **Better Profile Management**: Profile commands now exit cleanly after setup instead of launching Claude
+- **Enhanced Flag Separation**: Better handling of ClaudeBox vs Claude Code specific flags
+- **Shell Mode Improvements**: Fixed shell mode functionality with proper environment setup
+- **Development-Friendly Defaults**: Sudo enabled and firewall disabled by default for productivity
 
 ## ✨ Features
 
 - **Containerized Environment**: Run Claude Code in an isolated Docker container
-- **MCP Servers**: Pre-configured Model Context Protocol servers for thinking and memory
-- **Development Profiles**: Pre-configured language stacks (C/C++, Python, Rust, Go, etc.)
+- **Five MCP Servers**: Pre-configured Sequential Thinking, Memory, Context7, Task Master AI, and Playwright servers
+- **Development Profiles**: Pre-configured language stacks (C/C++, Python, Rust, Go, etc.) with proper tool integration
+- **Multi-Project Support**: Each repository gets its own isolated container configuration and profiles
 - **Persistent Configuration**: Settings and data persist between sessions
 - **Package Management**: Easy installation of additional development tools
 - **Auto-Setup**: Handles Docker installation and configuration automatically
-- **Security Features**: Network isolation with optional overrides
-- **Cross-Platform**: Works on Ubuntu, Debian, Fedora, Arch, and more
+- **Development-Friendly Defaults**: Firewall disabled and sudo enabled by default for development productivity
+- **Cross-Platform**: Works on Linux and macOS (WSL2 for Windows)
 
 ## 📋 Prerequisites
 
@@ -90,20 +93,26 @@ ClaudeBox includes 15+ pre-configured development environments:
 # List all available profiles
 claudebox profile
 
-# Install specific profiles
+# Install specific profiles (exits after setup)
 claudebox profile python ml        # Python + Machine Learning
 claudebox profile c openwrt       # C/C++ + OpenWRT
 claudebox profile rust go         # Rust + Go
+
+# Then launch Claude with your profiles active
+claudebox
 ```
 
 #### Available Profiles:
 
+**Fully Implemented:**
 - **c** - C/C++ Development (gcc, g++, gdb, valgrind, cmake, cmocka, lcov, ncurses)
 - **openwrt** - OpenWRT Development (cross-compilation, QEMU, build essentials)
 - **rust** - Rust Development (cargo, rustc, clippy, rust-analyzer)
-- **python** - Python Development (pip, venv, black, mypy, pylint, poetry, pipenv)
-- **go** - Go Development (latest Go toolchain)
-- **javascript** - Node.js/TypeScript (npm, yarn, pnpm, TypeScript, ESLint, Prettier)
+- **python** - Python Development (python3, pip, venv, plus global uv package manager)
+- **go** - Go Development (Go 1.21.5 toolchain)
+- **javascript** - Node.js/TypeScript development tools
+
+**Coming Soon (not yet in cached build):**
 - **java** - Java Development (OpenJDK 17, Maven, Gradle, Ant)
 - **ruby** - Ruby Development (Ruby, gems, bundler)
 - **php** - PHP Development (PHP, Composer, common extensions)
@@ -117,12 +126,42 @@ claudebox profile rust go         # Rust + Go
 
 ### MCP Servers
 
-ClaudeBox includes two powerful MCP servers:
+ClaudeBox includes five powerful MCP servers:
 
 1. **Sequential Thinking Server** - For complex problem-solving with revision capabilities
 2. **Memory Server** - Knowledge graph for persistent memory across sessions
+3. **Context7** - Upstash context management and caching capabilities
+4. **Task Master AI** - Advanced project management and task tracking capabilities
+5. **Playwright** - Browser automation and web testing tools
 
 These are automatically configured and available to Claude within the container.
+
+### Multi-Project Support
+
+ClaudeBox supports running multiple instances with different profiles across different repositories:
+
+```bash
+# Repository 1: Python web development
+cd ~/projects/django-app
+claudebox profile python ml
+claudebox  # Runs with Python + ML tools
+
+# Repository 2: C++ systems programming  
+cd ~/projects/cpp-engine
+claudebox profile c rust
+claudebox  # Runs with C/C++ + Rust tools
+
+# Repository 3: OpenWRT embedded development
+cd ~/projects/router-firmware
+claudebox profile c openwrt
+claudebox  # Runs with cross-compilation tools
+```
+
+Each project directory maintains its own:
+- Container configuration and profiles
+- Development tool installations
+- Firewall allowlists (`~/.claudebox/<project>/firewall/allowlist`)
+- Virtual environments (for Python projects)
 
 ### Package Management
 
@@ -139,15 +178,16 @@ claudebox update
 
 ### Security Options
 
+**Current Defaults (Development-Friendly):**
+- Sudo access: **ENABLED** by default
+- Network firewall: **DISABLED** by default  
+- Permission checks: **SKIPPED** by default
+
 ```bash
-# Run with sudo enabled (use with caution)
-claudebox --dangerously-enable-sudo
-
-# Disable network firewall (allows all network access)
-claudebox --dangerously-disable-firewall
-
-# Skip permission checks
-claudebox --dangerously-skip-permissions
+# To enable stricter security, modify these variables in the script:
+# CLAUDEBOX_ENABLE_SUDO=false        # Disable sudo
+# CLAUDEBOX_DISABLE_FIREWALL=false   # Enable firewall
+# Comment out: DEFAULT_FLAGS+=("--dangerously-skip-permissions")
 ```
 
 ### Maintenance
@@ -177,20 +217,18 @@ ClaudeBox stores data in:
 
 ### MCP Configuration
 
-ClaudeBox automatically manages `.mcp.json` in your workspace:
-- Creates configuration if none exists
-- Backs up existing configurations
-- Restores original on exit
+ClaudeBox automatically sets up `.mcp.json` in your workspace with all five MCP servers configured and ready to use.
 
 ## 🏗️ Architecture
 
 ClaudeBox creates a Debian-based Docker image with:
 - Node.js (via NVM for version flexibility)
 - Claude Code CLI (@anthropic-ai/claude-code)
-- MCP servers (thinking and memory)
+- Five MCP servers (Sequential Thinking, Memory, Context7, Task Master AI, Playwright)
 - User account matching host UID/GID
-- Network firewall (Anthropic-only by default)
+- Network firewall available but disabled by default for development
 - Volume mounts for workspace and configuration
+- Ephemeral containers with persistent data directories
 
 ## 🤝 Contributing
 
@@ -223,9 +261,34 @@ claudebox profile <name>
 ```
 
 ### Can't Find Command
-Ensure the symlink was created:
+ClaudeBox creates a symlink in your user's local bin directory:
 ```bash
-sudo ln -s /path/to/claudebox /usr/local/bin/claudebox
+# Check if symlink exists
+ls -la ~/.local/bin/claudebox
+
+# If missing, the script will recreate it on next run
+./claudebox
+```
+
+### Python Tools Not Found (uv, python3)
+If development tools aren't available after installing the Python profile:
+```bash
+# Rebuild with fresh profile
+claudebox clean --all
+claudebox profile python
+claudebox shell
+which python3 uv  # Should now work
+```
+
+### macOS Compatibility Issues
+ClaudeBox now fully supports macOS. If you encounter issues:
+```bash
+# Ensure script is executable
+chmod +x claudebox
+
+# Clean and rebuild if needed
+./claudebox clean --all
+./claudebox profile <your-profiles>
 ```
 
 ## 🎉 Acknowledgments
