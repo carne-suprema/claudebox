@@ -1179,6 +1179,8 @@ DOCKERFILE
        -v "$HOME/.claude":/home/$DOCKER_USER/.claude \
        -v "$HOME/.npmrc":/home/$DOCKER_USER/.npmrc:ro \
        -v "$HOME/.ssh":/home/$DOCKER_USER/.ssh:ro \
+       -v "$HOME/.gitconfig":/home/$DOCKER_USER/.gitconfig:ro \
+       $(for gitconfig in "$HOME"/.gitconfig-*; do [[ -f "$gitconfig" ]] && echo "-v $gitconfig:/home/$DOCKER_USER/$(basename "$gitconfig"):ro"; done | tr '\n' ' ') \
        -e "NODE_ENV=${NODE_ENV:-production}" \
        -e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" \
        -e "NODE_OPTIONS=--max-old-space-size=4096" \

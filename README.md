@@ -183,7 +183,7 @@ claudebox update
 
 ### Git Authentication
 
-ClaudeBox automatically mounts your SSH keys for Git authentication:
+ClaudeBox automatically mounts your SSH keys and Git configuration for seamless Git operations:
 
 #### SSH Keys with Host Aliases (Recommended)
 
@@ -201,8 +201,10 @@ git remote set-url origin github.com-mykey:username/repo.git
 
 claudebox shell
 ssh -T github.com-mykey  # Should show GitHub greeting
-git push origin main  # Works with SSH key authentication
+git push origin main  # Works with SSH key authentication and your Git config
 ```
+
+**Git Configuration**: ClaudeBox mounts your `~/.gitconfig` and any conditional config files (like `~/.gitconfig-*`) so your user name, email, and other Git settings work correctly inside the container.
 
 ### Security Options
 
