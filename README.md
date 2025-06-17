@@ -32,7 +32,7 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 - **Enhanced Flag Separation**: Better handling of ClaudeBox vs Claude Code specific flags
 - **Shell Mode Improvements**: Fixed shell mode functionality with proper environment setup
 - **Git Authentication**: SSH key mounting for Git operations (works best with SSH host aliases)
-- **Development-Friendly Defaults**: Sudo enabled and firewall disabled by default for productivity
+- **Development-Friendly Defaults**: Sudo enabled by default for productivity
 
 ## ✨ Features
 
@@ -44,7 +44,7 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 - **Persistent Configuration**: Settings and data persist between sessions
 - **Package Management**: Easy installation of additional development tools
 - **Auto-Setup**: Handles Docker installation and configuration automatically
-- **Development-Friendly Defaults**: Firewall disabled and sudo enabled by default for development productivity
+- **Development-Friendly Defaults**: Sudo enabled by default for development productivity
 - **Cross-Platform**: Works on Linux and macOS (WSL2 for Windows)
 
 ## 📋 Prerequisites
@@ -166,7 +166,6 @@ Each project directory maintains its own:
 
 - Container configuration and profiles
 - Development tool installations
-- Firewall allowlists (`~/.claudebox/<project>/firewall/allowlist`)
 - Virtual environments (for Python projects)
 
 ### Package Management
@@ -210,13 +209,11 @@ git push origin main  # Works with SSH key authentication
 **Current Defaults (Development-Friendly):**
 
 - Sudo access: **ENABLED** by default
-- Network firewall: **DISABLED** by default  
 - Permission checks: **SKIPPED** by default
 
 ```bash
 # To enable stricter security, modify these variables in the script:
 # CLAUDEBOX_ENABLE_SUDO=false        # Disable sudo
-# CLAUDEBOX_DISABLE_FIREWALL=false   # Enable firewall
 # Comment out: DEFAULT_FLAGS+=("--dangerously-skip-permissions")
 ```
 
@@ -258,7 +255,6 @@ ClaudeBox creates a Debian-based Docker image with:
 - Claude Code CLI (@anthropic-ai/claude-code)
 - Five MCP servers (Sequential Thinking, Memory, Context7, Task Master AI, Playwright)
 - User account matching host UID/GID
-- Network firewall available but disabled by default for development
 - Volume mounts for workspace and configuration
 - Ephemeral containers with persistent data directories
 

@@ -30,7 +30,6 @@ DEFAULT_FLAGS+=("--dangerously-skip-permissions")
 
 # Default ClaudeBox flags - comment/uncomment as needed  
 CLAUDEBOX_ENABLE_SUDO=true
-CLAUDEBOX_DISABLE_FIREWALL=true
 
 # Color codes
 readonly RED='\033[0;31m'
@@ -205,26 +204,6 @@ PROFILES[go]="wget git build-essential"
 PROFILE_DESCRIPTIONS[go]="Go Development (Go will be installed separately)"
 PROFILES[javascript]="build-essential python3"
 PROFILE_DESCRIPTIONS[javascript]="JavaScript/TypeScript Development (Node.js, npm, yarn)"
-PROFILES[java]="openjdk-17-jdk maven gradle ant"
-PROFILE_DESCRIPTIONS[java]="Java Development (OpenJDK 17, Maven, Gradle, Ant)"
-PROFILES[ruby]="ruby-full ruby-dev build-essential zlib1g-dev libssl-dev libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt1-dev libcurl4-openssl-dev software-properties-common libffi-dev"
-PROFILE_DESCRIPTIONS[ruby]="Ruby Development (Ruby, gems, build tools)"
-PROFILES[php]="php php-cli php-fpm php-mysql php-pgsql php-sqlite3 php-curl php-gd php-mbstring php-xml php-zip composer"
-PROFILE_DESCRIPTIONS[php]="PHP Development (PHP, Composer, common extensions)"
-PROFILES[database]="postgresql-client mysql-client sqlite3 redis-tools mongodb-clients"
-PROFILE_DESCRIPTIONS[database]="Database Tools (PostgreSQL, MySQL, SQLite, Redis, MongoDB clients)"
-PROFILES[devops]="docker.io docker-compose kubectl helm terraform ansible awscli"
-PROFILE_DESCRIPTIONS[devops]="DevOps Tools (Docker, K8s, Terraform, Ansible, AWS CLI)"
-PROFILES[web]="nginx apache2-utils curl wget httpie jq"
-PROFILE_DESCRIPTIONS[web]="Web Development Tools (nginx, curl, httpie, jq)"
-PROFILES[embedded]="gcc-arm-none-eabi gdb-multiarch openocd picocom minicom screen platformio"
-PROFILE_DESCRIPTIONS[embedded]="Embedded Development (ARM toolchain, debuggers, serial tools)"
-PROFILES[datascience]="python3-numpy python3-pandas python3-scipy python3-matplotlib python3-seaborn jupyter-notebook r-base"
-PROFILE_DESCRIPTIONS[datascience]="Data Science (NumPy, Pandas, Jupyter, R)"
-PROFILES[security]="nmap tcpdump wireshark-common netcat-openbsd john hashcat hydra"
-PROFILE_DESCRIPTIONS[security]="Security Tools (network analysis, penetration testing)"
-PROFILES[ml]="python3-pip python3-dev python3-venv build-essential cmake"
-PROFILE_DESCRIPTIONS[ml]="Machine Learning (base tools, Python libs installed separately)"
 
 # Docker operations
 docker_exec_root() {
@@ -318,7 +297,6 @@ setup_project_folder() {
     mkdir -p "$PROJECT_CLAUDEBOX_DIR/claude-config"
     mkdir -p "$PROJECT_CLAUDEBOX_DIR/memory"
     mkdir -p "$PROJECT_CLAUDEBOX_DIR/context"
-    mkdir -p "$PROJECT_CLAUDEBOX_DIR/firewall"
 
     info "Created project folder: $PROJECT_CLAUDEBOX_DIR"
 }
@@ -498,61 +476,7 @@ main() {
             echo
             ;;
 
-        save|commit)
-            shift
-            warn "The 'save' command is deprecated!"
-            info "With --rm containers, there's nothing to save."
-            info "Profiles and packages are tracked in profiles.json automatically."
-            echo
 
-            # Show current project's profile info
-            local profile_file
-            profile_file=$(get_profile_file_path)
-
-            if [[ -f "$profile_file" ]]; then
-                cecho "Current project profile info ($PROJECT_DIR):" "$CYAN"
-                cat "$profile_file"
-            else
-                info "No profiles configured for current project."
-            fi
-
-            exit 0
-            ;;
-
-        update|config|mcp|migrate-installer)
-            [[ ! -f /.dockerenv ]] && docker image inspect "$IMAGE_NAME" &>/dev/null || \
-                error "ClaudeBox image not found.\nRun ${GREEN}claudebox${NC} first to build the image."
-
-            local cmd=$1
-            shift
-
-            info "Running $cmd command..."
-
-            # Create temporary container
-            local temp_container
-            temp_container=$(docker create "$IMAGE_NAME" sleep infinity)
-            docker start "$temp_container" >/dev/null
-
-            if [[ "$cmd" == "update" ]]; then
-                info "Updating Claude code..."
-                docker exec -u "$DOCKER_USER" "$temp_container" bash -c "
-                    source \$HOME/.nvm/nvm.sh
-                    nvm use default
-                    claude update
-                    claude --version
-                "
-            else
-                docker exec -it -u "$DOCKER_USER" "$temp_container" \
-                    /home/$DOCKER_USER/claude-wrapper "${DEFAULT_FLAGS[@]}" "$cmd" "$@"
-            fi
-
-            # Commit changes back to image
-            docker commit "$temp_container" "$IMAGE_NAME" >/dev/null
-            docker rm -f "$temp_container" >/dev/null
-
-            success "$cmd completed and saved to image!"
-            exit 0
-            ;;
 
         shell)
             shift
@@ -711,12 +635,10 @@ main() {
                 cecho "Added Options:" "$WHITE"
                 echo -e "${CYAN}  -v, --verbose                   ${WHITE}Show detailed output"
                 echo -e "${CYAN}  --dangerously-enable-sudo       ${WHITE}Enable sudo without password"
-                echo -e "${CYAN}  --dangerously-disable-firewall  ${WHITE}Disable network restrictions"
                 echo
                 cecho "Added Commands:" "$WHITE"
                 echo -e "  profile [names...]              Install language profiles"
                 echo -e "  install <packages>              Install apt packages"
-                echo -e "  save                            (Deprecated) Container state is auto-tracked"
                 echo -e "  shell                           Open bash shell in container"
                 echo -e "  info                            Show ClaudeBox container status"
                 echo -e "  clean                           Clean up ClaudeBox resources (use 'clean --help' for options)"
@@ -900,7 +822,7 @@ ENV LANG=en_US.UTF-8 \
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -qq && \
-    apt-get install -y -qq curl gnupg ca-certificates sudo git iptables ipset && \
+    apt-get install -y -qq curl gnupg ca-certificates sudo git && \
     apt-get clean
 
 RUN groupadd -g $GROUP_ID $USERNAME || true && \
@@ -918,7 +840,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     build-essential git wget curl unzip file vim nano \
     jq make less rsync openssh-client \
     procps sudo fzf zsh man-db gnupg2 \
-    iptables ipset iproute2 dnsutils aggregate && \
+    && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
@@ -991,9 +913,6 @@ RUN bash -c "source $NVM_DIR/nvm.sh && \
     nvm use default && \
     npm install -g @anthropic-ai/claude-code"
 
-RUN printf '#!/bin/bash\nset -euo pipefail\nif [ "${DISABLE_FIREWALL:-false}" = "true" ]; then\n    echo "Firewall disabled, skipping setup"\n    rm -f "$0"\n    exit 0\nfi\niptables -F OUTPUT 2>/dev/null || true\niptables -F INPUT 2>/dev/null || true\niptables -A OUTPUT -p udp --dport 53 -j ACCEPT\niptables -A OUTPUT -p tcp --dport 53 -j ACCEPT\niptables -A INPUT -p udp --sport 53 -j ACCEPT\niptables -A OUTPUT -o lo -j ACCEPT\niptables -A INPUT -i lo -j ACCEPT\niptables -A OUTPUT -s 127.0.0.0/8 -d 127.0.0.0/8 -j ACCEPT\niptables -A INPUT -s 127.0.0.0/8 -d 127.0.0.0/8 -j ACCEPT\niptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT\niptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT\n# Default allowed domains\nDEFAULT_DOMAINS="api.anthropic.com console.anthropic.com statsig.anthropic.com sentry.io"\n\n# Read additional domains from allowlist file if it exists\nALLOWED_DOMAINS="$DEFAULT_DOMAINS"\n# Try project-specific allowlist first, then fall back to global\nif [ -f /home/DOCKERUSER/.claudebox-project/firewall/allowlist ]; then\n    echo "Loading project-specific allowlist"\n    while IFS= read -r domain; do\n        # Skip comments and empty lines\n        [[ "$domain" =~ ^#.* ]] && continue\n        [[ -z "$domain" ]] && continue\n        # Remove wildcards for now (*.example.com becomes example.com)\n        domain="${domain#*.}"\n        ALLOWED_DOMAINS="$ALLOWED_DOMAINS $domain"\n    done < /home/DOCKERUSER/.claudebox-project/firewall/allowlist\nelif [ -f /home/DOCKERUSER/.claudebox/allowlist ]; then\n    echo "Loading global allowlist from .claudebox/allowlist"\n    while IFS= read -r domain; do\n        # Skip comments and empty lines\n        [[ "$domain" =~ ^#.* ]] && continue\n        [[ -z "$domain" ]] && continue\n        # Remove wildcards for now (*.example.com becomes example.com)\n        domain="${domain#*.}"\n        ALLOWED_DOMAINS="$ALLOWED_DOMAINS $domain"\n    done < /home/DOCKERUSER/.claudebox/allowlist\nfi\n\nif command -v ipset >/dev/null 2>&1; then\n    ipset destroy allowed-domains 2>/dev/null || true\n    ipset create allowed-domains hash:net\n    ipset destroy allowed-ips 2>/dev/null || true\n    ipset create allowed-ips hash:net\n\n    for domain in $ALLOWED_DOMAINS; do\n        # Check if it'\''s an IP range\n        if [[ "$domain" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$ ]]; then\n            ipset add allowed-ips $domain 2>/dev/null || true\n        else\n            # It'\''s a domain, resolve it\n            ips=$(getent hosts $domain 2>/dev/null | awk '\''{print $1}'\'')\n            for ip in $ips; do\n                ipset add allowed-domains $ip 2>/dev/null || true\n            done\n        fi\n    done\n    iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT\n    iptables -A OUTPUT -m set --match-set allowed-ips dst -j ACCEPT\nelse\n    # Fallback without ipset\n    for domain in $ALLOWED_DOMAINS; do\n        if [[ "$domain" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$ ]]; then\n            iptables -A OUTPUT -d $domain -j ACCEPT\n        else\n            # Resolve domain to IPs\n            ips=$(getent hosts $domain 2>/dev/null | awk '\''{print $1}'\'')\n            for ip in $ips; do\n                iptables -A OUTPUT -d $ip -j ACCEPT\n            done\n        fi\n    done\nfi\niptables -P OUTPUT DROP\niptables -P INPUT DROP\necho "Firewall initialized with Anthropic-only access"\nrm -f "$0"\n' > ~/init-firewall.sh
-
-RUN chmod +x ~/init-firewall.sh
 
 # Install profile packages as separate layers for better caching
 USER root
@@ -1065,16 +984,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 DOCKERFILE
                         ;;
-                    java)
-                        cat >> "$dockerfile" <<'DOCKERFILE'
-# Java Development Profile
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -qq && \
-    apt-get install -y -qq openjdk-17-jdk maven gradle ant && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-DOCKERFILE
-                        ;;
                     openwrt)
                         cat >> "$dockerfile" <<'DOCKERFILE'
 # OpenWRT Development Profile
@@ -1084,9 +993,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 DOCKERFILE
-                        ;;
-                    ruby|php|database|devops|web|embedded|datascience|security|ml)
-                        warn "Profile $profile not yet implemented in cached build"
                         ;;
                     *)
                         warn "Unknown profile: $profile"
@@ -1125,24 +1031,18 @@ USER root
 COPY <<ENTRYPOINT /usr/local/bin/docker-entrypoint
 #!/bin/bash
 ENABLE_SUDO=false
-DISABLE_FIREWALL=false
 while [[ \$# -gt 0 ]]; do
     case "\$1" in
         --dangerously-enable-sudo) ENABLE_SUDO=true; shift ;;
-        --dangerously-disable-firewall) DISABLE_FIREWALL=true; shift ;;
         *) break ;;
     esac
 done
-export DISABLE_FIREWALL
 
 if [ -d /home/DOCKERUSER/.claudebox-project ]; then
     mkdir -p /home/DOCKERUSER/.claudebox-project/memory
     chown -R DOCKERUSER /home/DOCKERUSER/.claudebox-project
 fi
 
-if [ -f /home/DOCKERUSER/init-firewall.sh ]; then
-    /home/DOCKERUSER/init-firewall.sh || true
-fi
 if [ "\$ENABLE_SUDO" = "true" ]; then
     echo "DOCKERUSER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/DOCKERUSER
     chmod 0440 /etc/sudoers.d/DOCKERUSER
@@ -1193,7 +1093,6 @@ fi
 ENTRYPOINT
 
 RUN sed -i "s/DOCKERUSER/$USERNAME/g" /usr/local/bin/docker-entrypoint && \
-    sed -i "s/DOCKERUSER/$USERNAME/g" /home/$USERNAME/init-firewall.sh && \
     chmod +x /usr/local/bin/docker-entrypoint
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
@@ -1218,8 +1117,7 @@ DOCKERFILE
         echo -e "  ${YELLOW}claudebox shell${NC}                  # Open bash shell in container"
         echo
         cecho "Security:" "$GREEN"
-        echo -e "  Network firewall: ON by default (Anthropic recommended)"
-        echo -e "  Sudo access: OFF by default"
+        echo -e "  Sudo access: ON by default for development"
         echo
         cecho "Maintenance:" "$GREEN"
         echo -e "  ${YELLOW}claudebox clean --help${NC}            # See all cleanup options"
@@ -1242,79 +1140,6 @@ DOCKERFILE
        sudo chown -R "$USER:$USER" "$HOME/.claudebox" || true
    fi
 
-   # Create project-specific allowlist if it doesn't exist
-   local project_folder_name
-   project_folder_name=$(get_project_folder_name "$PROJECT_DIR")
-   local allowlist_file="$HOME/.claudebox/$project_folder_name/firewall/allowlist"
-
-   if [[ ! -f "$allowlist_file" ]]; then
-       mkdir -p "$(dirname "$allowlist_file")"
-       info "Creating default firewall allowlist for project..."
-       cat > "$allowlist_file" <<'EOF'
-# ClaudeBox Firewall Allowlist
-# Lines starting with # are comments
-# Add one domain or IP range per line
-#
-# Default domains (always allowed):
-# - api.anthropic.com
-# - console.anthropic.com
-# - statsig.anthropic.com
-# - sentry.io
-
-# ====================
-# GitHub.com
-# ====================
-github.com
-api.github.com
-raw.githubusercontent.com
-ssh.github.com
-avatars.githubusercontent.com
-codeload.github.com
-objects.githubusercontent.com
-pipelines.actions.githubusercontent.com
-ghcr.io
-pkg-containers.githubusercontent.com
-
-# ====================
-# GitLab.com
-# ====================
-gitlab.com
-api.gitlab.com
-registry.gitlab.com
-uploads.gitlab.com
-gitlab.io
-*.gitlab.io
-*.s3.amazonaws.com
-*.amazonaws.com
-
-# ====================
-# Bitbucket.org
-# ====================
-bitbucket.org
-api.bitbucket.org
-altssh.bitbucket.org
-bbuseruploads.s3.amazonaws.com
-bitbucket-pipelines-prod-us-west-2.s3.amazonaws.com
-bitbucket-pipelines-prod-us-east-1.s3.amazonaws.com
-bitbucket-pipelines-prod-eu-west-1.s3.amazonaws.com
-
-# ====================
-# Atlassian IP Ranges (Bitbucket Cloud)
-# ====================
-104.192.136.0/21
-185.166.140.0/22
-13.200.41.128/25
-18.246.31.128/25
-
-# ====================
-# Optional (Git LFS, Assets)
-# ====================
-github-cloud.s3.amazonaws.com
-github-releases.githubusercontent.com
-github-production-release-asset-2e65be.s3.amazonaws.com
-EOF
-       success "Created default allowlist"
-   fi
 
    # Create new container with --rm
    info "Starting claudebox for $PROJECT_DIR..."
@@ -1336,7 +1161,7 @@ EOF
    FILTERED_ARGS=()
    for arg in "${RUN_ARGS[@]:-$@}"; do
        case "$arg" in
-           --dangerously-enable-sudo|--dangerously-disable-firewall)
+           --dangerously-enable-sudo)
                # Skip flags that are handled by ClaudeBox itself
                ;;
            *)
@@ -1360,11 +1185,8 @@ EOF
        -e "POWERLEVEL9K_DISABLE_GITSTATUS=true" \
        -e "CLAUDEBOX_PROJECT_DIR=$PROJECT_DIR" \
        "${extra_mounts[@]}" \
-       --cap-add NET_ADMIN \
-       --cap-add NET_RAW \
        "$IMAGE_NAME" \
        ${CLAUDEBOX_ENABLE_SUDO:+--dangerously-enable-sudo} \
-       ${CLAUDEBOX_DISABLE_FIREWALL:+--dangerously-disable-firewall} \
        "${DEFAULT_FLAGS[@]}" "${FILTERED_ARGS[@]}"
 }
 
