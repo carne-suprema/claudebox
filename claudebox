@@ -1126,6 +1126,7 @@ DOCKERFILE
         echo
         cecho "Security:" "$GREEN"
         echo -e "  Sudo access: ON by default for development"
+        echo -e "  Network firewall: OFF (full internet access)"
         echo
         cecho "Maintenance:" "$GREEN"
         echo -e "  ${YELLOW}claudebox clean --help${NC}            # See all cleanup options"
